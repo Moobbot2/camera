@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Webcam Example</title>
+</head>
+
+<body>
+    <h1>Webcam Example</h1>
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline width="640" height="480"></video>
+    </div>
+    <button id="startButton">Start Webcam</button>
+    <button id="stopButton" disabled>Stop Webcam</button>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+
+        let stream = null;
+
+        startButton.addEventListener('click', async () => {
+            try {
+                // Get user media (access to the webcam)
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+                // Set the video element's srcObject to the stream from the webcam
+                video.srcObject = stream;
+
+                startButton.disabled = true;
+                stopButton.disabled = false;
+            } catch (error) {
+                console.error('Error accessing the webcam: ', error);
+            }
+        });
+
+        stopButton.addEventListener('click', () => {
+            if (stream) {
+                // Stop the webcam stream
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
+        });
+    </script>
+</body>
+
+</html>
