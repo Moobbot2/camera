@@ -2,21 +2,27 @@
 <html>
 
 <head>
-    <title>Webcam Example</title>
+    <title>Webcam Frame Capture</title>
 </head>
 
 <body>
-    <h1>Webcam Example</h1>
-    <div id="video-container">
-        <video id="webcam" autoplay playsinline width="640" height="480"></video>
+    <div class="wrap">
+        <h1>Webcam Frame Capture</h1>
+        <div id="video-container">
+            <video id="webcam" autoplay playsinline width="640" height="480"></video>
+        </div>
+        <button id="startButton">Start Webcam</button>
+        <button id="captureButton" disabled>Capture Frame</button>
+        <canvas id="canvas" style="display: none;"></canvas>
     </div>
-    <button id="startButton">Start Webcam</button>
-    <button id="stopButton" disabled>Stop Webcam</button>
-
     <script>
+        var ws = new WebSocket("ws://172.16.4.83:4111");
+
         const video = document.getElementById('webcam');
         const startButton = document.getElementById('startButton');
-        const stopButton = document.getElementById('stopButton');
+        const captureButton = document.getElementById('captureButton');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
 
         let stream = null;
 
@@ -29,20 +35,24 @@
                 video.srcObject = stream;
 
                 startButton.disabled = true;
-                stopButton.disabled = false;
+                captureButton.disabled = false;
             } catch (error) {
                 console.error('Error accessing the webcam: ', error);
             }
         });
 
-        stopButton.addEventListener('click', () => {
-            if (stream) {
-                // Stop the webcam stream
-                stream.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
-                startButton.disabled = false;
-                stopButton.disabled = true;
-            }
+        captureButton.addEventListener('click', () => {
+            // Capture a frame from the video and draw it on the canvas
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert the frame to an image
+            const capturedImage = new Image();
+            capturedImage.src = canvas.toDataURL('image/jpeg');
+
+            // Display the captured image or you can do something with it (e.g., save it)
+            document.body.appendChild(capturedImage);
         });
     </script>
 </body>
