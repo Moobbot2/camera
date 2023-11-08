@@ -3,58 +3,124 @@
 
 <head>
     <title>Webcam Frame Capture</title>
+    <style>
+        .style-wrap {
+            display: flex;
+            justify-content: space-between;
+            min-width: 600px;
+        }
+    </style>
 </head>
 
 <body>
     <div class="wrap">
         <h1>Webcam Frame Capture</h1>
-        <div id="video-container">
-            <video id="webcam" autoplay playsinline width="640" height="480"></video>
+        <div class="style-wrap">
+            <div id="video-container">
+                <video id="webcam" autoplay playsinline width="640" height="480"></video>
+            </div>
+            <div class="server-send">
+                <img src="" alt="" id="image-b64" width="640" height="480">
+            </div>
+        </div>
+        <div class="emotion-wrap">
+            <h4 id="emotion-name"></h4>
         </div>
         <button id="startButton">Start Webcam</button>
-        <button id="captureButton" disabled>Capture Frame</button>
         <canvas id="canvas" style="display: none;"></canvas>
     </div>
-    <script>
-        var ws = new WebSocket("ws://172.16.4.83:4111");
-
-        const video = document.getElementById('webcam');
-        const startButton = document.getElementById('startButton');
-        const captureButton = document.getElementById('captureButton');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-
-        let stream = null;
-
-        startButton.addEventListener('click', async () => {
-            try {
-                // Get user media (access to the webcam)
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
-
-                // Set the video element's srcObject to the stream from the webcam
-                video.srcObject = stream;
-
-                startButton.disabled = true;
-                captureButton.disabled = false;
-            } catch (error) {
-                console.error('Error accessing the webcam: ', error);
-            }
-        });
-
-        captureButton.addEventListener('click', () => {
-            // Capture a frame from the video and draw it on the canvas
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Convert the frame to an image
-            const capturedImage = new Image();
-            capturedImage.src = canvas.toDataURL('image/jpeg');
-
-            // Display the captured image or you can do something with it (e.g., save it)
-            document.body.appendChild(capturedImage);
-        });
-    </script>
 </body>
+<script>
+    var ws = null;
+    const video = document.getElementById('webcam');
+    const startButton = document.getElementById('startButton');
+    const captureButton = document.getElementById('captureButton');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let stream = null;
+
+    function emotion_point(emotion) {
+        let emotion_index = emotion;
+        var emotion_name = document.getElementById('emotion-name');
+        emotion_name.innerHTML = emotion_index;
+    }
+
+    function get_frame() {
+        // Capture a frame from the video and draw it on the canvas
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Convert the canvas to a Base64 image
+        var base64Image = canvas.toDataURL('image/png'); // You can specify the image format here
+
+        return base64Image;
+    }
+
+    function sendFrame() {
+        frame = get_frame();
+        // Web Socket is connected, send data using send()
+        ws.send(JSON.stringify({
+            "message": "sendMessage",
+            "data": frame,
+        }));
+        // console.log(frame);
+        // Gửi khung hình sau một khoảng thời gian (ví dụ: sau mỗi giây)
+        setTimeout(sendFrame, 1000);
+    }
+    function WebSocketRun() {
+        console.log('---Bắt đầu thử kết nối---');
+        if ("WebSocket" in window) {
+            console.log('WebSocket supported by your Browser!');
+            ws.onopen = function () {
+                console.log('Open WebSocket');
+                setTimeout(sendFrame, 1000);
+                console.log("Connected...");
+            };
+
+            ws.onmessage = function (evt) {
+                console.log('WebSocketTest');
+                var data_return = evt.data;
+
+                var parsedData = JSON.parse(data_return);
+                base64String = parsedData.image;
+                // console.log(base64String);
+                emotions = parsedData.emotions;
+                emotion_point(emotions);
+
+                // Add the image element to the DOM (e.g., a div with id "image-container")
+                var img = document.getElementById("image-b64"); // Replace with your container element
+                img.src = base64String;
+            };
+
+            ws.onclose = function () {
+                // websocket is closed.
+                console.log("Connection is closed...");
+            };
+        } else {
+            // The browser doesn't support WebSocket
+            alert("WebSocket NOT supported by your Browser!");
+        }
+    }
+
+    // Khởi chạy webcamera
+    startButton.addEventListener('click', async () => {
+        try {
+            // Get user media (access to the webcam)
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+            // Set the video element's srcObject to the stream from the webcam
+            video.srcObject = stream;
+            startButton.disabled = true;
+            console.log('Start webcamera');
+            // Khi bạn đã có dữ liệu video từ webcam, hãy khởi tạo kết nối WebSocket
+            ws = new WebSocket("ws://192.168.88.30:4111");
+            WebSocketRun();
+        } catch (error) {
+            console.error('Error accessing the webcam: ', error);
+        }
+    });
+</script>
 
 </html>
