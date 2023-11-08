@@ -67,7 +67,8 @@
         }));
         // console.log(frame);
         // Gửi khung hình sau một khoảng thời gian (ví dụ: sau mỗi giây)
-        setTimeout(sendFrame, 1000);
+        // setTimeout(sendFrame, 1000);
+        // setTimeout(sendFrame, 100);
     }
     function WebSocketRun() {
         console.log('---Bắt đầu thử kết nối---');
@@ -85,7 +86,7 @@
 
                 var parsedData = JSON.parse(data_return);
                 base64String = parsedData.image;
-                // console.log(base64String);
+                console.log(base64String);
                 emotions = parsedData.emotions;
                 emotion_point(emotions);
 
