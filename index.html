@@ -32,6 +32,7 @@
 </body>
 <script>
     var ws = null;
+    var sendFrameInterval;
     const video = document.getElementById('webcam');
     const startButton = document.getElementById('startButton');
     const captureButton = document.getElementById('captureButton');
@@ -68,7 +69,7 @@
         // console.log(frame);
         // Gửi khung hình sau một khoảng thời gian (ví dụ: sau mỗi giây)
         // setTimeout(sendFrame, 1000);
-        setTimeout(sendFrame, 100);
+        sendFrameInterval = setTimeout(sendFrame, 100);
     }
     function WebSocketRun() {
         console.log('---Bắt đầu thử kết nối---');
@@ -83,10 +84,8 @@
             ws.onmessage = function (evt) {
                 console.log('WebSocketTest');
                 var data_return = evt.data;
-
                 var parsedData = JSON.parse(data_return);
                 base64String = parsedData.image;
-                console.log(base64String);
                 emotions = parsedData.emotions;
                 emotion_point(emotions);
 
@@ -97,6 +96,7 @@
 
             ws.onclose = function () {
                 // websocket is closed.
+                clearTimeout(sendFrameInterval);
                 console.log("Connection is closed...");
             };
         } else {
@@ -104,7 +104,8 @@
             alert("WebSocket NOT supported by your Browser!");
         }
     }
-
+    var ip_socket = "ws://222.254.1.74:5001";
+    var ip_socket_local = "ws://192.168.88.145:5001";
     // Khởi chạy webcamera
     startButton.addEventListener('click', async () => {
         try {
@@ -116,7 +117,8 @@
             startButton.disabled = true;
             console.log('Start webcamera');
             // Khi bạn đã có dữ liệu video từ webcam, hãy khởi tạo kết nối WebSocket
-            ws = new WebSocket("ws://192.168.88.30:4111");
+            ws = new WebSocket(ip_socket_local);
+            // ws = new WebSocket("ws://192.168.88.30:4111");
             WebSocketRun();
         } catch (error) {
             console.error('Error accessing the webcam: ', error);
