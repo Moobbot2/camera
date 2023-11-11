@@ -25,7 +25,7 @@ def extract_frames(video_path, output_folder):
     cap.release()
 
 if __name__ == "__main__":
-    video_path = "path/to/your/video.mp4"  # Change this to the path of your video file
-    output_folder = "path/to/output/folder"  # Change this to the desired output folder
+    video_path = "./output/x7P4GxuM88A.mp4"  # Change this to the path of your video file
+    output_folder = "./output/x7P4GxuM88A"  # Change this to the desired output folder
 
     extract_frames(video_path, output_folder)
