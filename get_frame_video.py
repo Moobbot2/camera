@@ -5,7 +5,11 @@ def extract_frames(video_path, output_folder):
     # Open the video file
     cap = cv2.VideoCapture(video_path)
 
-    # Create the output folder if it doesn't exist
+    # Extract the filename without extension
+    video_filename = os.path.splitext(os.path.basename(video_path))[0]
+
+    # Create the output folder based on the video filename
+    output_folder = os.path.join(output_folder, video_filename)
     os.makedirs(output_folder, exist_ok=True)
 
     # Get frames and save them to the output folder
@@ -26,6 +30,6 @@ def extract_frames(video_path, output_folder):
 
 if __name__ == "__main__":
     video_path = "./output/x7P4GxuM88A.mp4"  # Change this to the path of your video file
-    output_folder = "./output/x7P4GxuM88A"  # Change this to the desired output folder
+    output_folder = "./output"  # Change this to the desired output folder
 
     extract_frames(video_path, output_folder)
