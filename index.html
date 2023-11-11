@@ -1,129 +1,176 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+
+<html lang="en">
 
 <head>
-    <title>Webcam Frame Capture</title>
-    <style>
-        .style-wrap {
-            display: flex;
-            justify-content: space-between;
-            min-width: 600px;
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>WebcamJS Test Page</title>
+    <style type="text/css">
+        body {
+            font-family: Helvetica, sans-serif;
+        }
+
+        h2,
+        h3 {
+            margin-top: 0;
+        }
+
+        form {
+            margin-top: 15px;
+        }
+
+        form>input {
+            margin-right: 15px;
+        }
+
+        #results {
+            float: right;
+            padding: 15px;
+            border: 1px solid;
+            background: #f8f8f8;
+        }
+
+        .left {
+            float: left;
+        }
+
+        .right {
+            float: right;
+        }
+
+        .half {
+            width: 50%;
         }
     </style>
 </head>
 
 <body>
-    <div class="wrap">
-        <h1>Webcam Frame Capture</h1>
-        <div class="style-wrap">
-            <div id="video-container">
-                <video id="webcam" autoplay playsinline width="640" height="480"></video>
-            </div>
-            <div class="server-send">
-                <img src="" alt="" id="image-b64" width="640" height="480">
-            </div>
+    <div class="left">
+
+        <div id="my_camera"></div>
+
+        <!-- A button for taking snaps -->
+        <form>
+            <input type="button" id="startButton" value="Start">
+            <input type="button" id="stopButton" value="Stop">
+            <input type="button" id="clearButton" value="Clear">
+        </form>
+    </div>
+
+    <div class="right half">
+        <div id="results">
+            <img src="" alt="" id="image-b64" width="640" height="480">
         </div>
         <div class="emotion-wrap">
             <h4 id="emotion-name"></h4>
         </div>
-        <button id="startButton">Start Webcam</button>
-        <canvas id="canvas" style="display: none;"></canvas>
     </div>
+
+    <!-- First, include the Webcam.js JavaScript Library -->
+    <script type="text/javascript" src="webcam.min.js"></script>
+
+    <!-- Configure a few settings and attach camera -->
+    <script language="JavaScript">
+        Webcam.set({
+            // live preview size
+            width: 640,
+            height: 480,
+
+            // device capture size
+            dest_width: 640,
+            dest_height: 480,
+
+            image_format: 'jpeg',
+            jpeg_quality: 90
+        });
+        Webcam.attach('#my_camera');
+    </script>
+
+    <!-- Code to handle taking the snapshot and displaying it locally -->
+    <script language="JavaScript">
+        let ws = null;
+        let timer = null;
+        let currentBase64String = '';
+
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const clearButton = document.getElementById('clearButton');
+
+        startButton.addEventListener('click', startSnapping);
+        stopButton.addEventListener('click', stopSnapping);
+        clearButton.addEventListener('click', eraseSnaps);
+
+        function startSnapping() {
+            ws = new WebSocket("ws://192.168.88.145:5001");
+            if (!timer) {
+                initializeWebSocket();
+            }
+        }
+
+        function stopSnapping() {
+            if (timer) {
+                clearTimeout(timer);
+                timer = null;
+            }
+        }
+
+        function eraseSnaps() {
+            currentBase64String = '';
+            updateImageSrc();
+            ws.onclose();
+        }
+
+        function initializeWebSocket() {
+            console.log('---Bắt đầu thử kết nối---');
+            if ("WebSocket" in window) {
+                console.log('WebSocket supported by your Browser!');
+                ws.onopen = function () {
+                    console.log('Open WebSocket');
+                    timer = setTimeout(takeSnapshot, 250);
+                    console.log("Connected...");
+                };
+
+                ws.onmessage = function (evt) {
+                    console.log('WebSocketTest');
+                    var dataReturn = evt.data;
+                    var parsedData = JSON.parse(dataReturn);
+                    currentBase64String = parsedData.image;
+                    const emotions = parsedData.emotions;
+                    emotionPoint(emotions);
+                    updateImageSrc();
+                };
+
+                ws.onclose = function () {
+                    clearTimeout(timer);
+                    console.log("Connection is closed...");
+                };
+            } else {
+                alert("WebSocket NOT supported by your Browser!");
+            }
+        }
+
+        function takeSnapshot() {
+            Webcam.snap(function (dataURI) {
+                ws.send(JSON.stringify({
+                    message: 'sendMessage',
+                    data: dataURI,
+                }));
+                timer = setTimeout(takeSnapshot, 250);
+            });
+        }
+
+        function emotionPoint(emotion) {
+            var emotionName = document.getElementById('emotion-name');
+            emotionName.innerHTML = emotion;
+        }
+
+        function updateImageSrc() {
+            var img = document.getElementById("image-b64");
+            img.src = currentBase64String;
+        }
+
+    </script>
+
 </body>
-<script>
-    var ws = null;
-    var sendFrameInterval;
-    const video = document.getElementById('webcam');
-    const startButton = document.getElementById('startButton');
-    const captureButton = document.getElementById('captureButton');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-
-    let stream = null;
-
-    function emotion_point(emotion) {
-        let emotion_index = emotion;
-        var emotion_name = document.getElementById('emotion-name');
-        emotion_name.innerHTML = emotion_index;
-    }
-
-    function get_frame() {
-        // Capture a frame from the video and draw it on the canvas
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        // Convert the canvas to a Base64 image
-        var base64Image = canvas.toDataURL('image/png'); // You can specify the image format here
-
-        return base64Image;
-    }
-
-    function sendFrame() {
-        frame = get_frame();
-        // Web Socket is connected, send data using send()
-        ws.send(JSON.stringify({
-            "message": "sendMessage",
-            "data": frame,
-        }));
-        // console.log(frame);
-        // Gửi khung hình sau một khoảng thời gian (ví dụ: sau mỗi giây)
-        // setTimeout(sendFrame, 1000);
-        sendFrameInterval = setTimeout(sendFrame, 100);
-    }
-    function WebSocketRun() {
-        console.log('---Bắt đầu thử kết nối---');
-        if ("WebSocket" in window) {
-            console.log('WebSocket supported by your Browser!');
-            ws.onopen = function () {
-                console.log('Open WebSocket');
-                setTimeout(sendFrame, 1000);
-                console.log("Connected...");
-            };
-
-            ws.onmessage = function (evt) {
-                console.log('WebSocketTest');
-                var data_return = evt.data;
-                var parsedData = JSON.parse(data_return);
-                base64String = parsedData.image;
-                emotions = parsedData.emotions;
-                emotion_point(emotions);
-
-                // Add the image element to the DOM (e.g., a div with id "image-container")
-                var img = document.getElementById("image-b64"); // Replace with your container element
-                img.src = base64String;
-            };
-
-            ws.onclose = function () {
-                // websocket is closed.
-                clearTimeout(sendFrameInterval);
-                console.log("Connection is closed...");
-            };
-        } else {
-            // The browser doesn't support WebSocket
-            alert("WebSocket NOT supported by your Browser!");
-        }
-    }
-    var ip_socket = "ws://222.254.1.74:5001";
-    var ip_socket_local = "ws://192.168.88.145:5001";
-    // Khởi chạy webcamera
-    startButton.addEventListener('click', async () => {
-        try {
-            // Get user media (access to the webcam)
-            stream = await navigator.mediaDevices.getUserMedia({ video: true });
-
-            // Set the video element's srcObject to the stream from the webcam
-            video.srcObject = stream;
-            startButton.disabled = true;
-            console.log('Start webcamera');
-            // Khi bạn đã có dữ liệu video từ webcam, hãy khởi tạo kết nối WebSocket
-            ws = new WebSocket(ip_socket_local);
-            // ws = new WebSocket("ws://192.168.88.30:4111");
-            WebSocketRun();
-        } catch (error) {
-            console.error('Error accessing the webcam: ', error);
-        }
-    });
-</script>
 
 </html>
